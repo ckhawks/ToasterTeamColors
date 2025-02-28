@@ -18,6 +18,9 @@ public class Plugin : BasePlugin
     public static UIChat chat;
     public static UIMinimap uiMinimap;
     public static UIGameState uiGameState;
+    public static UITeamSelect uiTeamSelect;
+    public static UIScoreboard uiScoreboard;
+    public static UIAnnouncement uiAnnouncement;
     // public static PlayerManager playerManager;
 
     // config values

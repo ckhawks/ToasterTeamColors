@@ -25,7 +25,7 @@ public class PatchClientChat
             Plugin.chat = __instance;
             string[] messageParts = message.Split(' ');
 
-            if (messageParts[0] == "/teamcolor")
+            if (messageParts[0].InvariantEqualsIgnoreCase("/teamcolor"))
             {
                 if (messageParts.Length < 3)
                 {
@@ -35,33 +35,55 @@ public class PatchClientChat
 
                 if (messageParts[1].InvariantEqualsIgnoreCase("blue") || messageParts[1].InvariantEqualsIgnoreCase("b"))
                 {
-                    Color? colorToSet = HexColorStringToColorObject(messageParts[2].Replace("#", ""));
+                    string potentialHexColor = messageParts[2].Replace("#", "");
+                    Plugin.Log.LogInfo($"Potential hex color to set: {potentialHexColor}");
+                    Color? colorToSet = HexColorStringToColorObject(potentialHexColor);
                     if (!colorToSet.HasValue)
                     {
                         Plugin.chat.AddChatMessage($"You did not specify a color correctly.<br>/teamcolor (red/blue/r/b) #abc123");
                         return false;
                     }
                     SetTeamToVisualColor(PlayerTeam.Blue, colorToSet.Value);
-                    Plugin.configTeamBlueColor.Value = messageParts[2].Replace("#", "");
-                    Plugin.chat.AddChatMessage($"Blue team was set to color #{colorToSet.Value}");
+                    Plugin.configTeamBlueColor.Value = potentialHexColor;
+                    Plugin.Log.LogInfo($"Blue team config color was set to color #{potentialHexColor}");
+                    Plugin.chat.AddChatMessage($"Blue team was set to color <color=#{potentialHexColor}>#{colorToSet.Value}</color>");
                     return false;
                 }
                 
                 if (messageParts[1].InvariantEqualsIgnoreCase("red") || messageParts[1].InvariantEqualsIgnoreCase("r"))
                 {
-                    Color? colorToSet = HexColorStringToColorObject(messageParts[2].Replace("#", ""));
+                    string potentialHexColor = messageParts[2].Replace("#", "");
+                    Plugin.Log.LogInfo($"Potential hex color to set: {potentialHexColor}");
+                    Color? colorToSet = HexColorStringToColorObject(potentialHexColor);
                     if (!colorToSet.HasValue)
                     {
                         Plugin.chat.AddChatMessage($"You did not specify a color correctly.<br>/teamcolor (red/blue/r/b) #abc123");
                         return false;
                     }
                     SetTeamToVisualColor(PlayerTeam.Red, colorToSet.Value);
-                    Plugin.configTeamRedColor.Value = messageParts[2].Replace("#", "");
-                    Plugin.chat.AddChatMessage($"Red team was set to color #{colorToSet.Value}");
+                    Plugin.configTeamRedColor.Value = potentialHexColor;
+                    Plugin.Log.LogInfo($"Red team config color was set to color #{potentialHexColor}");
+                    Plugin.chat.AddChatMessage($"Red team was set to color <color=#{potentialHexColor}>#{colorToSet.Value}</color>");
                     return false;
                 }
                 
                 Plugin.chat.AddChatMessage($"You must specify a team color and a hex color to set them to.<br>/teamcolor (red/blue/r/b) #abc123");
+                return false;
+            }
+
+            if (messageParts[0].InvariantEqualsIgnoreCase("/resetteamcolors"))
+            {
+                // reset blue team color
+                Color? colorToSetBlue = HexColorStringToColorObject("1d69e5"); // blue color
+                SetTeamToVisualColor(PlayerTeam.Blue, colorToSetBlue.Value);
+                Plugin.configTeamBlueColor.Value = "1d69e5";
+                
+                // reset red team color
+                Color? colorToSetRed = HexColorStringToColorObject("e21a18"); // red color
+                SetTeamToVisualColor(PlayerTeam.Red, colorToSetRed.Value);
+                Plugin.configTeamRedColor.Value = "e21a18";
+                
+                Plugin.chat.AddChatMessage($"Team colors have been reset.");
                 return false;
             }
 
@@ -71,40 +93,98 @@ public class PatchClientChat
 
     public static Color? HexColorStringToColorObject(string hexColorString)
     {
-        bool parsed = ColorUtility.TryParseHtmlString($"#{hexColorString}#", out Color parsedColor);
+        // this had a # at the end of the string for some reason, I think the AI autocomplete did that but I think that was the issue
+        bool parsed = ColorUtility.TryParseHtmlString($"#{hexColorString}", out Color parsedColor);
         return parsed ? parsedColor : null; 
-        
     }
 
     public static void SetTeamToVisualColor(PlayerTeam team, Color color)
     {
         if (team == PlayerTeam.Blue)
         {
-            Plugin.uiMinimap.teamBlueColor = color;
-            Color selfColor = color;
-            selfColor.a = 0.5f;
-            Plugin.uiMinimap.teamBlueSelfColor = selfColor;
-            Plugin.uiGameState.blueScoreLabel.style.color = color;
+            if (Plugin.uiMinimap != null)
+            {
+                Plugin.uiMinimap.teamBlueColor = color;
+                Color selfColor = color;
+                selfColor.a = 0.5f;
+                Plugin.uiMinimap.teamBlueSelfColor = selfColor;
+            }
+
+            if (Plugin.uiGameState != null)
+            {
+                Plugin.uiGameState.blueScoreLabel.style.color = color;
+            }
             
+            if (Plugin.uiTeamSelect != null)
+            {
+                Plugin.uiTeamSelect.teamBlueButton.style.backgroundColor = color;
+            }
+            
+            if (Plugin.uiScoreboard != null)
+            {
+                Plugin.uiScoreboard.teamBlueContainer.style.backgroundColor = color;
+            }
+            
+            if (Plugin.uiAnnouncement != null)
+            {
+                Plugin.uiAnnouncement.blueTeamScoreAnnouncement.style.color = color;
+            }
         }
         else
         {
-            Plugin.uiMinimap.teamRedColor = color;
-            Color selfColor = color;
-            selfColor.a = 0.5f;
-            Plugin.uiMinimap.teamRedSelfColor = selfColor;
-            Plugin.uiGameState.redScoreLabel.style.color = color;
+            if (Plugin.uiMinimap != null)
+            {
+                Plugin.uiMinimap.teamRedColor = color;
+                Color selfColor = color;
+                selfColor.a = 0.5f;
+                Plugin.uiMinimap.teamRedSelfColor = selfColor;
+            }
+
+            if (Plugin.uiGameState != null)
+            {
+                Plugin.uiGameState.redScoreLabel.style.color = color;
+            }
+
+            if (Plugin.uiTeamSelect != null)
+            {
+                Plugin.uiTeamSelect.teamRedButton.style.backgroundColor = color;
+            }
+
+            if (Plugin.uiScoreboard != null)
+            {
+                Plugin.uiScoreboard.teamRedContainer.style.backgroundColor = color;
+            }
+            
+            if (Plugin.uiAnnouncement != null)
+            {
+                Plugin.uiAnnouncement.redTeamScoreAnnouncement.style.color = color;
+            }
         }
+    }
+
+    public static void SetColorsOnEverything()
+    {
+        try
+        {
+            SetTeamToVisualColor(PlayerTeam.Blue, HexColorStringToColorObject(Plugin.configTeamBlueColor.Value).Value);
+            SetTeamToVisualColor(PlayerTeam.Red, HexColorStringToColorObject(Plugin.configTeamRedColor.Value).Value);
+        }
+        catch (System.InvalidOperationException e)
+        {
+            Plugin.Log.LogInfo($"Error setting everything team colors: {e.Message}");
+        }
+        
     }
 
     [HarmonyPatch(typeof(UIChat), nameof(UIChat.WrapPlayerUsername))]
     public class PatchUIChatWrapPlayerUsername
     {
         [HarmonyPrefix]
-        public static bool Prefix(UIChat __instance, string __result, Player player)
+        public static bool Prefix(UIChat __instance, out string __result, Player player)
         {
             Plugin.Log.LogInfo($"Patch: UIChat.WrapPlayerUsername (Prefix) was called.");
             string username = player.Username.Value.ToString();
+            string playerNumber = player.Number.Value.ToString();
             string colorHex = "";
             switch (player.Team.Value)
             {
@@ -122,7 +202,7 @@ public class PatchClientChat
                     break;
             }
             
-            __result = $"<b><color=#{colorHex}>{username}</color></b>";
+            __result = $"<b><color=#{colorHex}>#{playerNumber} {username}</color></b>";
             
             return false;
         }
@@ -132,7 +212,7 @@ public class PatchClientChat
     public class WrapInTeamColor
     {
         [HarmonyPrefix]
-        public static bool Prefix(UIChat __instance, string __result, PlayerTeam team, string message)
+        public static bool Prefix(UIChat __instance, out string __result, PlayerTeam team, string message)
         {
             Plugin.Log.LogInfo($"Patch: UIChat.WrapInTeamColor (Prefix) was called.");
             string colorHex = "";

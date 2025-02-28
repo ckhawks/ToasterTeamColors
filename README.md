@@ -10,5 +10,7 @@ This is a BepInEx plugin that allows you to locally change the visual colors of 
 - For example, `/teamcolor blue #bdefab` sets Blue team's color to #bdefab.
 - The pound sign is optional.
 
+- `/resetteamcolors` - Reset the team colors back to the standard default blue and red.
+
 ## Get Involved
 Want to get involved with the Puck modding scene? Join Toaster's Rink - http://discord.puckstats.io/
