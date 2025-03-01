@@ -21,7 +21,8 @@ public class Plugin : BasePlugin
     public static UITeamSelect uiTeamSelect;
     public static UIScoreboard uiScoreboard;
     public static UIAnnouncement uiAnnouncement;
-    // public static PlayerManager playerManager;
+
+    public static PlayerManager playerManager;
 
     // config values
     public static ConfigEntry<string> configTeamBlueColor;
