@@ -1,9 +1,11 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using HarmonyLib;
 using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using Il2CppSystem.Linq;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.InputSystem.Utilities;
@@ -117,7 +119,61 @@ public class PatchClientChat
             
             if (Plugin.uiTeamSelect != null)
             {
+                // this does not work
+                // teamBlueButton is a UnityEngine.UIElements.Button
                 Plugin.uiTeamSelect.teamBlueButton.style.backgroundColor = color;
+                
+                // this also does not work
+                var buttonBackground = Plugin.uiTeamSelect.teamBlueButton.Q<VisualElement>("unity-button-background");
+                if (buttonBackground != null)
+                {
+                    buttonBackground.style.backgroundColor = new StyleColor(color);
+                }
+                else
+                {
+                    Debug.LogWarning("Button background element not found!");
+                }
+                
+                // Option 1: Use StyleColor consistently
+                Plugin.uiTeamSelect.teamBlueButton.style.backgroundColor = new StyleColor(color);
+    
+                // // Option 2: Try setting the background color with USS class
+                // Plugin.uiTeamSelect.teamBlueButton.AddToClassList("blue-team-button");
+                //
+                // // Create a StyleSheet programmatically
+                // var sheet = ScriptableObject.CreateInstance<StyleSheet>();
+                // var rule = new StyleRule();
+                // rule.selectors.Add(new StyleSelector(".blue-team-button", StyleSelectorType.Class));
+                // rule.properties.Add(new StyleProperty("background-color", new StyleColor(color).ToString()));
+                // sheet.rules.Add(rule);
+                //
+                // // Apply the stylesheet
+                // Plugin.uiTeamSelect.teamBlueButton.styleSheets.Add(sheet);
+    
+                // Option 3: Try manipulating the visual hierarchy more specifically
+                var buttonVisualElement = Plugin.uiTeamSelect.teamBlueButton;
+                for(int i = 0; i < buttonVisualElement.Children().Count(); i++)
+                {
+                    Plugin.Log.LogInfo($"Adding stylecolor to {buttonVisualElement.m_Children._items[i].name}");
+                    buttonVisualElement.m_Children._items[i].style.backgroundColor = new StyleColor(color);
+                }
+                
+                // For UIElements with custom styling
+                var visualElement = Plugin.uiTeamSelect.teamBlueButton as VisualElement;
+                if (visualElement != null)
+                {
+                    // Try to find all nested visual elements and set their colors
+                    var allChildren = visualElement.Query<VisualElement>().ToList();
+                    foreach (var child in allChildren)
+                    {
+                        child.style.backgroundColor = new StyleColor(color);
+                    }
+                }
+                
+                // Option 4: Force a visual update
+                Plugin.uiTeamSelect.teamBlueButton.style.backgroundColor = new StyleColor(color);
+                Plugin.uiTeamSelect.teamBlueButton.MarkDirtyRepaint();
+                
             }
             
             if (Plugin.uiScoreboard != null)
@@ -127,7 +183,11 @@ public class PatchClientChat
             
             if (Plugin.uiAnnouncement != null)
             {
-                Plugin.uiAnnouncement.blueTeamScoreAnnouncement.style.color = color;
+                var textElement = Plugin.uiAnnouncement.blueTeamScoreAnnouncement.Q<Label>();
+                if (textElement != null)
+                {
+                    textElement.style.color = new StyleColor(color);
+                }
             }
         }
         else
@@ -147,7 +207,21 @@ public class PatchClientChat
 
             if (Plugin.uiTeamSelect != null)
             {
+                // this does not work
                 Plugin.uiTeamSelect.teamRedButton.style.backgroundColor = color;
+                
+                // this also does not work
+                var buttonBackground = Plugin.uiTeamSelect.teamRedButton.Q<VisualElement>("unity-button-background");
+                if (buttonBackground != null)
+                {
+                    buttonBackground.style.backgroundColor = new StyleColor(color);
+                }
+                else
+                {
+                    Debug.LogWarning("Button background element not found!");
+                }
+
+                ExportVisualElementHierarchy(Plugin.uiTeamSelect.teamRedButton, "teamRedButton");
             }
 
             if (Plugin.uiScoreboard != null)
@@ -157,7 +231,12 @@ public class PatchClientChat
             
             if (Plugin.uiAnnouncement != null)
             {
-                Plugin.uiAnnouncement.redTeamScoreAnnouncement.style.color = color;
+                // Plugin.uiAnnouncement.redTeamScoreAnnouncement.style.color = color;
+                var textElement = Plugin.uiAnnouncement.redTeamScoreAnnouncement.Q<Label>();
+                if (textElement != null)
+                {
+                    textElement.style.color = new StyleColor(color);
+                }
             }
         }
     }
@@ -176,65 +255,113 @@ public class PatchClientChat
         
     }
 
-    [HarmonyPatch(typeof(UIChat), nameof(UIChat.WrapPlayerUsername))]
-    public class PatchUIChatWrapPlayerUsername
+    // These don't work because they are modifying it on the server-host
+    // [HarmonyPatch(typeof(UIChat), nameof(UIChat.WrapPlayerUsername))]
+    // public class PatchUIChatWrapPlayerUsername
+    // {
+    //     [HarmonyPrefix]
+    //     public static bool Prefix(UIChat __instance, out string __result, Player player)
+    //     {
+    //         Plugin.Log.LogInfo($"Patch: UIChat.WrapPlayerUsername (Prefix) was called.");
+    //         string username = player.Username.Value.ToString();
+    //         string playerNumber = player.Number.Value.ToString();
+    //         string colorHex = "";
+    //         switch (player.Team.Value)
+    //         {
+    //             case PlayerTeam.Blue:
+    //                 colorHex = Plugin.configTeamBlueColor.Value.ToString();
+    //                 break;
+    //             case PlayerTeam.Red:
+    //                 colorHex = Plugin.configTeamRedColor.Value.ToString();
+    //                 break;
+    //             case PlayerTeam.Spectator:
+    //                 colorHex = "dddddd";
+    //                 break;
+    //             case PlayerTeam.None:
+    //                 colorHex = "dddddd";
+    //                 break;
+    //         }
+    //         
+    //         __result = $"<b><color=#{colorHex}>#{playerNumber} {username}</color></b>";
+    //         
+    //         return false;
+    //     }
+    // }
+    
+    // [HarmonyPatch(typeof(UIChat), nameof(UIChat.WrapInTeamColor))]
+    // public class WrapInTeamColor
+    // {
+    //     [HarmonyPrefix]
+    //     public static bool Prefix(UIChat __instance, out string __result, PlayerTeam team, string message)
+    //     {
+    //         Plugin.Log.LogInfo($"Patch: UIChat.WrapInTeamColor (Prefix) was called.");
+    //         string colorHex = "";
+    //         switch (team)
+    //         {
+    //             case PlayerTeam.Blue:
+    //                 colorHex = Plugin.configTeamBlueColor.Value.ToString();
+    //                 break;
+    //             case PlayerTeam.Red:
+    //                 colorHex = Plugin.configTeamRedColor.Value.ToString();
+    //                 break;
+    //             case PlayerTeam.Spectator:
+    //                 colorHex = "787879";
+    //                 break;
+    //             case PlayerTeam.None:
+    //                 colorHex = "787879";
+    //                 break;
+    //         }
+    //         
+    //         __result = $"<b><color=#{colorHex}>{message}</color></b>";
+    //         
+    //         return false;
+    //     }
+    // }
+
+    // this will change the messages coming into the client
+    [HarmonyPatch(typeof(UIChat), nameof(UIChat.AddChatMessage))]
+    public static class AddChatMessage
     {
         [HarmonyPrefix]
-        public static bool Prefix(UIChat __instance, out string __result, Player player)
+        public static bool Prefix(UIChat __instance, string content)
         {
-            Plugin.Log.LogInfo($"Patch: UIChat.WrapPlayerUsername (Prefix) was called.");
-            string username = player.Username.Value.ToString();
-            string playerNumber = player.Number.Value.ToString();
-            string colorHex = "";
-            switch (player.Team.Value)
+            Plugin.Log.LogInfo($"Patch: UIChat.AddChatMessage (Prefix) was called.");
+            Plugin.Log.LogInfo($"Message: {content}");
+            if (content.Contains("color=#E51717") || content.Contains("color=#175CE6"))
             {
-                case PlayerTeam.Blue:
-                    colorHex = Plugin.configTeamBlueColor.Value.ToString();
-                    break;
-                case PlayerTeam.Red:
-                    colorHex = Plugin.configTeamRedColor.Value.ToString();
-                    break;
-                case PlayerTeam.Spectator:
-                    colorHex = "dddddd";
-                    break;
-                case PlayerTeam.None:
-                    colorHex = "dddddd";
-                    break;
+                string contentWithReplacedColors = content
+                    .Replace("color=#E51717", $"color=#{Plugin.configTeamRedColor.Value.ToString()}")
+                    .Replace("color=#175CE6", $"color=#{Plugin.configTeamBlueColor.Value.ToString()}");
+                __instance.AddChatMessage(contentWithReplacedColors);
+                return false;
             }
-            
-            __result = $"<b><color=#{colorHex}>#{playerNumber} {username}</color></b>";
-            
-            return false;
+
+            return true;
         }
     }
     
-    [HarmonyPatch(typeof(UIChat), nameof(UIChat.WrapInTeamColor))]
-    public class WrapInTeamColor
+    public static void ExportVisualElementHierarchy(VisualElement root, string filePath)
     {
-        [HarmonyPrefix]
-        public static bool Prefix(UIChat __instance, out string __result, PlayerTeam team, string message)
+        StringBuilder sb = new StringBuilder();
+        TraverseVisualElement(root, sb, 0);
+
+        // Write the hierarchy to a file
+        System.IO.File.WriteAllText(filePath, sb.ToString());
+        Debug.Log($"VisualElement hierarchy exported to: {filePath}");
+    }
+
+    private static void TraverseVisualElement(VisualElement element, StringBuilder sb, int depth)
+    {
+        // Indent based on depth
+        sb.AppendLine($"{new string(' ', depth * 2)}- {element.name} ({element.GetType().Name})");
+
+        // Log style properties (optional)
+        sb.AppendLine($"{new string(' ', (depth + 1) * 2)}Style: {element.resolvedStyle}");
+
+        // Recursively traverse children
+        for (int i = 0; i < element.Children().Count(); i++)
         {
-            Plugin.Log.LogInfo($"Patch: UIChat.WrapInTeamColor (Prefix) was called.");
-            string colorHex = "";
-            switch (team)
-            {
-                case PlayerTeam.Blue:
-                    colorHex = Plugin.configTeamBlueColor.Value.ToString();
-                    break;
-                case PlayerTeam.Red:
-                    colorHex = Plugin.configTeamRedColor.Value.ToString();
-                    break;
-                case PlayerTeam.Spectator:
-                    colorHex = "787879";
-                    break;
-                case PlayerTeam.None:
-                    colorHex = "787879";
-                    break;
-            }
-            
-            __result = $"<b><color=#{colorHex}>{message}</color></b>";
-            
-            return false;
+            TraverseVisualElement(element.m_Children._items[i], sb, depth + 1);
         }
     }
 }

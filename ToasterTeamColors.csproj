@@ -17,7 +17,7 @@
     <PackageId>ToasterTeamColors</PackageId>
     <Authors>Stellaric</Authors>
     <Company>ToasterTeamColors</Company>
-    <AssemblyVersion>For Puck B171</AssemblyVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>
